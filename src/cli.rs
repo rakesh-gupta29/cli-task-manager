@@ -1,8 +1,12 @@
+use core::panic;
 use std::env;
 
 pub enum Command {
     Add(String),
     List { pending: bool, done: bool },
+    Done(u32),
+    Clear,
+    Search(String),
 }
 
 pub fn parse() -> Command {
@@ -26,6 +30,21 @@ pub fn parse() -> Command {
                 panic!("cannot use --pending and --done together");
             }
             Command::List { pending, done }
+        }
+        Some("done") => {
+            let id = args
+                .get(1)
+                .expect("Id is required")
+                .parse::<u32>()
+                .expect("Id should be a valid integer");
+
+            Command::Done(id)
+        }
+        Some("clear") => Command::Clear,
+        Some("search") => {
+            let query = args.get(1).expect("Query should be a valid string").trim();
+
+            Command::Search(query.to_string())
         }
 
         _ => {

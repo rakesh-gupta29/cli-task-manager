@@ -2,36 +2,11 @@
   {
     "id": 1,
     "title": "first",
-    "is_done": false
-  },
-  {
-    "id": 1,
-    "title": "second",
-    "is_done": false
-  },
-  {
-    "id": 1,
-    "title": "third",
-    "is_done": false
+    "is_done": true
   },
   {
     "id": 2,
-    "title": "third",
-    "is_done": false
-  },
-  {
-    "id": 3,
-    "title": "third",
-    "is_done": false
-  },
-  {
-    "id": 4,
-    "title": "third",
-    "is_done": false
-  },
-  {
-    "id": 5,
-    "title": "third",
+    "title": "second",
     "is_done": false
   }
 ]

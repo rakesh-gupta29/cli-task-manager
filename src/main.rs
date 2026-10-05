@@ -46,15 +46,45 @@ fn main() {
                     println!("No tasks");
                 }
             }
+            pretty_print(&filtered)
+        }
 
-            for task in filtered {
-                println!(
-                    "{}. {} [{}]",
-                    task.id,
-                    task.title,
-                    if task.is_done { "done" } else { "pending" }
-                );
+        Command::Done(id) => match tasks.iter_mut().find(|elem| elem.id == id) {
+            Some(elem) => {
+                if elem.is_done {
+                    println!("Task {} is already done", id);
+                    return;
+                }
+
+                elem.is_done = true;
+                storage::sync(&tasks);
+                println!("Task {} marked as done", id);
+            }
+
+            None => println!("No matching task found"),
+        },
+        Command::Search(query) => {
+            let filtered: Vec<&Task> = tasks
+                .iter()
+                .filter(|elem| elem.title.to_lowercase().contains(&query))
+                .collect();
+            if filtered.is_empty() {
+                println!("No results found");
+            } else {
+                pretty_print(&filtered);
             }
         }
+
+        Command::Clear => {
+            tasks.clear();
+            storage::sync(&tasks);
+        }
+    }
+}
+
+fn pretty_print(tasks: &[&Task]) {
+    for task in tasks {
+        let status = if task.is_done { "✅" } else { "⏳" };
+        println!("{} {}", status, task.title);
     }
 }
