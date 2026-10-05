@@ -3,6 +3,8 @@ mod storage;
 mod task;
 
 use cli::Command;
+use task::Priority;
+use task::Stats;
 use task::Task;
 
 fn next_id(tasks: &[Task]) -> u32 {
@@ -91,6 +93,36 @@ fn main() {
             }
         }
 
+        Command::Stats => {
+            let mut pending = 0;
+            let mut done = 0;
+            let mut high = 0;
+            let mut medium = 0;
+            let mut low = 0;
+
+            for task in &tasks {
+                match task.is_done {
+                    true => done += 1,
+                    false => pending += 1,
+                }
+
+                match task.priority {
+                    Priority::High => high += 1,
+                    Priority::Medium => medium += 1,
+                    Priority::Low => low += 1,
+                }
+            }
+
+            let stats = Stats {
+                total: tasks.len(),
+                pending,
+                completed: done,
+                high,
+                medium,
+                low,
+            };
+            print_stats(&stats);
+        }
         Command::Clear => {
             tasks.clear();
             storage::sync(&tasks);
@@ -103,4 +135,16 @@ fn pretty_print(tasks: &[&Task]) {
         let status = if task.is_done { "✅" } else { "⏳" };
         println!("{} {} [{:?}]", status, task.title, task.priority);
     }
+}
+
+fn print_stats(stats: &Stats) {
+    println!("📊 Task Statistics\n");
+    println!("Total:      {}", stats.total);
+    println!("Pending:    {}", stats.pending);
+    println!("Completed:  {}", stats.completed);
+    println!();
+    println!("Priority:");
+    println!("🔴 High:    {}", stats.high);
+    println!("🟡 Medium:  {}", stats.medium);
+    println!("🟢 Low:     {}", stats.low);
 }

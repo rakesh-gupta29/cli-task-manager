@@ -7,6 +7,16 @@ pub enum Priority {
     High = 3,
 }
 
+#[derive(Debug)]
+pub struct Stats {
+    pub total: usize,
+    pub pending: usize,
+    pub completed: usize,
+    pub high: usize,
+    pub medium: usize,
+    pub low: usize,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Task {
     pub id: u32,

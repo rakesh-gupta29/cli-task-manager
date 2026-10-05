@@ -13,6 +13,7 @@ pub enum Command {
     Done(u32),
     Clear,
     Search(String),
+    Stats,
 }
 
 pub fn parse() -> Command {
@@ -86,6 +87,8 @@ pub fn parse() -> Command {
 
             Command::Search(query.to_string())
         }
+
+        Some("stats") => Command::Stats,
 
         _ => {
             println!("Usage:");
