@@ -13,27 +13,41 @@ fn main() {
     let command = cli::parse();
     let mut tasks: Vec<Task> = storage::load();
     match command {
-        Command::Add(title) => {
-            let task = Task::new(next_id(&tasks), title);
+        Command::Add(title, priority) => {
+            let task = Task::new(next_id(&tasks), title, priority);
             tasks.push(task);
             storage::sync(&tasks);
             println!("Task added");
         }
-        Command::List { pending, done } => {
+        Command::List {
+            pending,
+            done,
+            priority,
+        } => {
             if tasks.is_empty() {
                 println!("No tasks found");
                 return;
             }
-            let filtered: Vec<&Task> = tasks
+            let mut filtered: Vec<&Task> = tasks
                 .iter()
                 .filter(|task| {
-                    if pending {
-                        !task.is_done
-                    } else if done {
-                        task.is_done
-                    } else {
-                        true
+                    if pending && task.is_done {
+                        return false;
                     }
+
+                    if done && !task.is_done {
+                        return false;
+                    }
+                    match &priority {
+                        Some(priority) => {
+                            if &task.priority != priority {
+                                return false;
+                            }
+                        }
+                        None => {}
+                    }
+
+                    true
                 })
                 .collect();
 
@@ -46,6 +60,8 @@ fn main() {
                     println!("No tasks");
                 }
             }
+
+            filtered.sort_by_key(|task| std::cmp::Reverse(task.priority as u8));
             pretty_print(&filtered)
         }
 
@@ -85,6 +101,6 @@ fn main() {
 fn pretty_print(tasks: &[&Task]) {
     for task in tasks {
         let status = if task.is_done { "✅" } else { "⏳" };
-        println!("{} {}", status, task.title);
+        println!("{} {} [{:?}]", status, task.title, task.priority);
     }
 }
