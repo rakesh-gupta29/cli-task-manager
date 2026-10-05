@@ -1,6 +1,3 @@
-use core::panic;
-use std::env;
-
 use crate::task::Priority;
 
 pub enum Command {
@@ -14,24 +11,21 @@ pub enum Command {
     Clear,
     Search(String),
     Stats,
+    Exit,
 }
 
-pub fn parse() -> Command {
-    let args: Vec<String> = env::args().skip(1).collect();
+pub fn parse(cmd: &str) -> Command {
+    let args: Vec<&str> = cmd.split_whitespace().collect();
 
-    match args.first().map(String::as_str) {
+    match args.first().copied() {
         Some("add") => {
-            let title = args.get(1).expect("Title must be a string").trim();
+            let title = args.get(1).expect("Title is required");
 
-            if title.is_empty() {
-                panic!("Title should not be empty");
-            }
-
-            let priority: Priority = match args.iter().position(|arg| arg == "--priority") {
+            let priority = match args.iter().position(|arg| *arg == "--priority") {
                 Some(index) => {
                     let value = args.get(index + 1).expect("Priority value is required");
 
-                    match value.as_str() {
+                    match *value {
                         "high" => Priority::High,
                         "medium" => Priority::Medium,
                         "low" => Priority::Low,
@@ -45,18 +39,17 @@ pub fn parse() -> Command {
         }
 
         Some("list") => {
-            let pending = args.iter().any(|arg| arg == "--pending");
-            let done = args.iter().any(|arg| arg == "--done");
-
+            let pending = args.contains(&"--pending");
+            let done = args.contains(&"--done");
             if pending && done {
-                panic!("cannot use --pending and --done together");
+                panic!("Cannot use --pending and --done together");
             }
 
-            let priority = match args.iter().position(|arg| arg == "--priority") {
+            let priority = match args.iter().position(|arg| *arg == "--priority") {
                 Some(index) => {
                     let value = args.get(index + 1).expect("Priority value is required");
 
-                    match value.as_str() {
+                    match *value {
                         "low" => Some(Priority::Low),
                         "medium" => Some(Priority::Medium),
                         "high" => Some(Priority::High),
@@ -72,6 +65,7 @@ pub fn parse() -> Command {
                 priority,
             }
         }
+
         Some("done") => {
             let id = args
                 .get(1)
@@ -81,21 +75,19 @@ pub fn parse() -> Command {
 
             Command::Done(id)
         }
+
         Some("clear") => Command::Clear,
+
         Some("search") => {
-            let query = args.get(1).expect("Query should be a valid string").trim();
+            let query = args.get(1).expect("Query is required");
 
             Command::Search(query.to_string())
         }
 
         Some("stats") => Command::Stats,
 
-        _ => {
-            println!("Usage:");
-            println!("  task-cli add <task>");
-            println!("  task-cli list");
+        Some("exit") => Command::Exit,
 
-            std::process::exit(1);
-        }
+        _ => panic!("Unknown command"),
     }
 }

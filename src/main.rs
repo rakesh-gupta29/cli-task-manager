@@ -2,6 +2,9 @@ mod cli;
 mod storage;
 mod task;
 
+use std::io;
+use std::io::Write;
+
 use cli::Command;
 use task::Priority;
 use task::Stats;
@@ -12,120 +15,135 @@ fn next_id(tasks: &[Task]) -> u32 {
 }
 
 fn main() {
-    let command = cli::parse();
     let mut tasks: Vec<Task> = storage::load();
-    match command {
-        Command::Add(title, priority) => {
-            let task = Task::new(next_id(&tasks), title, priority);
-            tasks.push(task);
-            storage::sync(&tasks);
-            println!("Task added");
-        }
-        Command::List {
-            pending,
-            done,
-            priority,
-        } => {
-            if tasks.is_empty() {
-                println!("No tasks found");
-                return;
-            }
-            let mut filtered: Vec<&Task> = tasks
-                .iter()
-                .filter(|task| {
-                    if pending && task.is_done {
-                        return false;
-                    }
+    loop {
+        print!("> ");
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin()
+            .read_line(&mut input)
+            .expect("failed to read input command");
+        let input = input.trim();
 
-                    if done && !task.is_done {
-                        return false;
-                    }
-                    match &priority {
-                        Some(priority) => {
-                            if &task.priority != priority {
-                                return false;
-                            }
-                        }
-                        None => {}
-                    }
-
-                    true
-                })
-                .collect();
-
-            if filtered.is_empty() {
-                if pending {
-                    println!("No pending tasks");
-                } else if done {
-                    println!("No completed tasks");
-                } else {
-                    println!("No tasks");
-                }
-            }
-
-            filtered.sort_by_key(|task| std::cmp::Reverse(task.priority as u8));
-            pretty_print(&filtered)
+        if input.is_empty() {
+            continue;
         }
 
-        Command::Done(id) => match tasks.iter_mut().find(|elem| elem.id == id) {
-            Some(elem) => {
-                if elem.is_done {
-                    println!("Task {} is already done", id);
-                    return;
-                }
-
-                elem.is_done = true;
+        let command = cli::parse(input);
+        match command {
+            Command::Add(title, priority) => {
+                let task = Task::new(next_id(&tasks), title, priority);
+                tasks.push(task);
                 storage::sync(&tasks);
-                println!("Task {} marked as done", id);
+                println!("Task added");
             }
+            Command::List {
+                pending,
+                done,
+                priority,
+            } => {
+                if tasks.is_empty() {
+                    println!("No tasks found");
+                    continue;
+                }
+                let mut filtered: Vec<&Task> = tasks
+                    .iter()
+                    .filter(|task| {
+                        if pending && task.is_done {
+                            return false;
+                        }
 
-            None => println!("No matching task found"),
-        },
-        Command::Search(query) => {
-            let filtered: Vec<&Task> = tasks
-                .iter()
-                .filter(|elem| elem.title.to_lowercase().contains(&query))
-                .collect();
-            if filtered.is_empty() {
-                println!("No results found");
-            } else {
+                        if done && !task.is_done {
+                            return false;
+                        }
+
+                        if let Some(priority) = &priority
+                            && &task.priority != priority
+                        {
+                            return false;
+                        }
+
+                        true
+                    })
+                    .collect();
+
+                if filtered.is_empty() {
+                    if pending {
+                        println!("No pending tasks");
+                    } else if done {
+                        println!("No completed tasks");
+                    } else {
+                        println!("No tasks");
+                    }
+                    continue;
+                }
+
+                filtered.sort_by_key(|task| std::cmp::Reverse(task.priority as u8));
                 pretty_print(&filtered);
             }
-        }
 
-        Command::Stats => {
-            let mut pending = 0;
-            let mut done = 0;
-            let mut high = 0;
-            let mut medium = 0;
-            let mut low = 0;
+            Command::Done(id) => match tasks.iter_mut().find(|elem| elem.id == id) {
+                Some(elem) => {
+                    if elem.is_done {
+                        println!("Task {} is already done", id);
+                        continue;
+                    }
 
-            for task in &tasks {
-                match task.is_done {
-                    true => done += 1,
-                    false => pending += 1,
+                    elem.is_done = true;
+                    storage::sync(&tasks);
+                    println!("Task {} marked as done", id);
                 }
 
-                match task.priority {
-                    Priority::High => high += 1,
-                    Priority::Medium => medium += 1,
-                    Priority::Low => low += 1,
+                None => println!("No matching task found"),
+            },
+            Command::Search(query) => {
+                let query = query.to_lowercase();
+                let filtered: Vec<&Task> = tasks
+                    .iter()
+                    .filter(|elem| elem.title.to_lowercase().contains(&query))
+                    .collect();
+                if filtered.is_empty() {
+                    println!("No results found");
+                } else {
+                    pretty_print(&filtered);
                 }
             }
+            Command::Exit => break,
 
-            let stats = Stats {
-                total: tasks.len(),
-                pending,
-                completed: done,
-                high,
-                medium,
-                low,
-            };
-            print_stats(&stats);
-        }
-        Command::Clear => {
-            tasks.clear();
-            storage::sync(&tasks);
+            Command::Stats => {
+                let mut pending = 0;
+                let mut done = 0;
+                let mut high = 0;
+                let mut medium = 0;
+                let mut low = 0;
+
+                for task in &tasks {
+                    match task.is_done {
+                        true => done += 1,
+                        false => pending += 1,
+                    }
+
+                    match task.priority {
+                        Priority::High => high += 1,
+                        Priority::Medium => medium += 1,
+                        Priority::Low => low += 1,
+                    }
+                }
+
+                let stats = Stats {
+                    total: tasks.len(),
+                    pending,
+                    completed: done,
+                    high,
+                    medium,
+                    low,
+                };
+                print_stats(&stats);
+            }
+            Command::Clear => {
+                tasks.clear();
+                storage::sync(&tasks);
+            }
         }
     }
 }
